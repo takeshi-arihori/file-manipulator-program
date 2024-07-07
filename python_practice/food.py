@@ -1,3 +1,5 @@
-food = input('What is your favorite food??\n')
+# 食べ物のリストを出力
+foods = ["apple", "banana", "orange"]
 
-print('Thanks for letting me know favorite food is ' + food)
+for food in foods:
+  print(food)
