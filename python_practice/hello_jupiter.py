@@ -1,3 +1,3 @@
-print("Hello World")
-print("Hello Jupiter")
+import sys
 
+sys.stdout.buffer.write(b'Hello Jupiter!!')

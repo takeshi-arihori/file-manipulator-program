@@ -10,3 +10,9 @@
 - エディタ: VSCode
 - パッケージマネージャ: APTなど
 - シェル: CLI
+
+## VSCodeのSetting
+
+
+## 学習LOG
+https://recursionist.io/dashboard/course/21/lesson/1080
