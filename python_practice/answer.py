@@ -1,6 +1,8 @@
+# answer.py
 import sys
 
-# 標準入力からデータを読み取る
-for line in sys.stdin:
-  # 改行を削除し、大文字に変換して出力
-  print(line.strip().upper())
+# 標準入力からデータを読み込む
+input_data = sys.stdin.read().strip()
+
+# 応答を生成する
+print(f"Thanks for letting me know your favorite food is {input_data}")
