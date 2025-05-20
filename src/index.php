@@ -42,7 +42,7 @@
     <ul>
         <li><a href="/guess_the_number_game.php">Guess the Number Game</a></li>
         <!-- 他のファイルへのリンクをここに追加 -->
-        <li><a href="/file_example_1.php">File Example 1</a></li>
+        <li><a href="/file_manipulator_program.php">File Manipulator Program</a></li>
         <li><a href="/file_example_2.php">File Example 2</a></li>
     </ul>
 </body>
