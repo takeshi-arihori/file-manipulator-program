@@ -1,53 +1,42 @@
 <?php
 session_start();
 
-// reverseコマンドの実行処理
+require_once __DIR__ . '/handlers/ReverseHandler.php';
+require_once __DIR__ . '/handlers/CopyHandler.php';
+require_once __DIR__ . '/handlers/DuplicateHandler.php';
+require_once __DIR__ . '/handlers/ReplaceHandler.php';
+
 $command = isset($_POST['command']) ? $_POST['command'] : '';
 $message = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if ($command === 'reverse') {
-        // アップロードされたファイルの処理
-        if (isset($_FILES['input_file']) && $_FILES['input_file']['error'] === UPLOAD_ERR_OK) {
-            $inputContent = file_get_contents($_FILES['input_file']['tmp_name']);
-            if ($inputContent === false) {
-                $message = 'ファイルの読み込みに失敗しました。';
-            } else {
-                // ファイルの文字エンコーディングを検出
-                $encoding = mb_detect_encoding($inputContent, ['UTF-8', 'SJIS', 'EUC-JP', 'ASCII'], true);
+    $handler = null;
 
-                // 検出できない場合はUTF-8と仮定
-                if (!$encoding) {
-                    $encoding = 'UTF-8';
-                }
+    switch ($command) {
+        case 'reverse':
+            $handler = new ReverseHandler($_FILES['input_file']);
+            break;
+        case 'copy':
+            $handler = new CopyHandler($_FILES['input_file']);
+            break;
+        case 'duplicate-contents':
+            $duplicateCount = isset($_POST['duplicate_count']) ? $_POST['duplicate_count'] : 1;
+            $handler = new DuplicateHandler($_FILES['input_file'], $duplicateCount);
+            break;
+        case 'replace-string':
+            $searchString = isset($_POST['search_string']) ? $_POST['search_string'] : '';
+            $replaceString = isset($_POST['replace_string']) ? $_POST['replace_string'] : '';
+            $handler = new ReplaceHandler($_FILES['input_file'], $searchString, $replaceString);
+            break;
+        default:
+            $message = '未対応のコマンドです。';
+            break;
+    }
 
-                // 一旦UTF-8に変換してから処理
-                $utf8Content = mb_convert_encoding($inputContent, 'UTF-8', $encoding);
-
-                // 文字列を反転
-                $reversedUtf8 = '';
-                $length = mb_strlen($utf8Content, 'UTF-8');
-
-                // マルチバイト文字に対応した反転処理
-                for ($i = $length - 1; $i >= 0; $i--) {
-                    $reversedUtf8 .= mb_substr($utf8Content, $i, 1, 'UTF-8');
-                }
-
-                // 出力ファイルの準備
-                $outputFilename = 'reversed_' . $_FILES['input_file']['name'];
-
-                // ファイルをダウンロードさせる
-                header('Content-Type: text/plain; charset=UTF-8');
-                header('Content-Disposition: attachment; filename="' . $outputFilename . '"');
-                header('Content-Length: ' . strlen($reversedUtf8));
-                echo $reversedUtf8;
-                exit;
-            }
-        } else {
-            $message = 'ファイルのアップロードに失敗しました。';
+    if ($handler !== null) {
+        if (!$handler->handle()) {
+            $message = $handler->getMessage();
         }
-    } else {
-        $message = '未対応のコマンドです。';
     }
 }
 ?>
@@ -95,6 +84,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-radius: 4px;
         }
 
+        .text-input {
+            border: 1px solid #ccc;
+            padding: 8px;
+            border-radius: 4px;
+            width: 100%;
+        }
+
         button {
             background-color: #007BFF;
             color: white;
@@ -115,17 +111,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background-color: #e3f2fd;
             color: #007BFF;
         }
+
+        .command-selector {
+            margin-bottom: 20px;
+        }
+
+        .command-selector select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
         <h1>File Manipulator Program</h1>
-        <form method="post" enctype="multipart/form-data">
-            <input type="hidden" name="command" value="reverse">
+        <form method="post" enctype="multipart/form-data" id="fileForm">
+            <div class="command-selector">
+                <label for="command">機能を選択:</label>
+                <select name="command" id="command" onchange="updateForm()">
+                    <option value="reverse">ファイル内容の反転</option>
+                    <option value="copy">ファイルのコピー</option>
+                    <option value="duplicate-contents">ファイル内容の複製</option>
+                    <option value="replace-string">文字列置換</option>
+                </select>
+            </div>
             <div>
                 <label for="input_file">処理したいファイルを選択:</label>
                 <input type="file" id="input_file" name="input_file" required class="file-input">
+            </div>
+            <div id="duplicateCountDiv" style="display: none;">
+                <label for="duplicate_count">複製回数:</label>
+                <input type="number" id="duplicate_count" name="duplicate_count" min="1" value="1" class="text-input">
+            </div>
+            <div id="replaceStringDiv" style="display: none;">
+                <label for="search_string">検索文字列:</label>
+                <input type="text" id="search_string" name="search_string" class="text-input">
+                <label for="replace_string">置換文字列:</label>
+                <input type="text" id="replace_string" name="replace_string" class="text-input">
             </div>
             <button type="submit">実行してダウンロード</button>
         </form>
@@ -133,6 +158,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="message"><?php echo htmlspecialchars($message); ?></div>
         <?php endif; ?>
     </div>
+
+    <script>
+        function updateForm() {
+            const command = document.getElementById('command').value;
+            const duplicateCountDiv = document.getElementById('duplicateCountDiv');
+            const replaceStringDiv = document.getElementById('replaceStringDiv');
+
+            duplicateCountDiv.style.display = command === 'duplicate-contents' ? 'block' : 'none';
+            replaceStringDiv.style.display = command === 'replace-string' ? 'block' : 'none';
+        }
+
+        // 初期表示時にフォームを更新
+        updateForm();
+    </script>
 </body>
 
 </html>
