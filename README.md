@@ -1,5 +1,13 @@
 # File Manipulator Program
 
+<img width="1363" alt="Screenshot 2025-05-27 at 10 15 28 AM" src="https://github.com/user-attachments/assets/5a2f1793-d2f5-4707-a7ae-1b210de87dca" />
+<img width="1356" alt="Screenshot 2025-05-27 at 10 15 37 AM" src="https://github.com/user-attachments/assets/76ff3875-8904-4018-998e-387b58f92f54" />
+
+
+https://github.com/user-attachments/assets/3efe784e-6801-42a2-babd-9c621549d650
+
+
+
 ## プロジェクト概要
 
 Laravel 12を使用したファイル操作Webアプリケーションです。ファイルのアップロード、各種操作（反転、コピー、複製、文字列置換）、結果のダウンロード、および操作ログの管理機能を提供しています。
