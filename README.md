@@ -48,20 +48,20 @@ Laravel 12を使用したファイル操作Webアプリケーションです。�
 
 ### Docker を使用する場合（推奨）
 
-1. リポジトリをクローン
+#### 1. リポジトリをクローン
 
 ```bash
 git clone [リポジトリURL]
 cd file-manipulator-program
 ```
 
-2. Docker コンテナを起動
+#### 2. Docker コンテナを起動
 
 ```bash
 docker compose up -d
 ```
 
-3. アプリケーションにアクセス
+#### 3. アプリケーションにアクセス
 
 ```
 http://localhost:8081
@@ -69,31 +69,30 @@ http://localhost:8081
 
 ### ローカル環境での実行
 
-1. 依存関係のインストール
+#### 1. 依存関係のインストール
 
 ```bash
 cd src
-composer install
-npm install
+docker compose exec php npm install
 ```
 
-2. 環境設定
+#### 2. 環境設定
 
 ```bash
-cp .env.example .env
-php artisan key:generate
+docker compose exec php cp .env.example .env
+docker compose exec php php artisan key:generate
 ```
 
-3. アセットのビルド
+#### 3. アセットのビルド
 
 ```bash
-npm run build
+docker compose exec php npm run build
 ```
 
-4. 開発サーバーの起動
+#### 4. 開発環境起動(npm run dev)
 
 ```bash
-php artisan serve
+docker compose exec php npm run dev
 ```
 
 ## ディレクトリ構造
