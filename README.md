@@ -1,6 +1,7 @@
 # File Manipulator Program
 
-<img width="1363" alt="Screenshot 2025-05-27 at 10 15 28 AM" src="https://github.com/user-attachments/assets/5a2f1793-d2f5-4707-a7ae-1b210de87dca" />
+<img width="1706" alt="Screenshot 2025-05-27 at 11 51 33 AM" src="https://github.com/user-attachments/assets/c434fb77-6658-4414-88b6-b5f455ca96b0" />
+
 <img width="1356" alt="Screenshot 2025-05-27 at 10 15 37 AM" src="https://github.com/user-attachments/assets/76ff3875-8904-4018-998e-387b58f92f54" />
 
 
