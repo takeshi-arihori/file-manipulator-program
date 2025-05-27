@@ -8,3 +8,46 @@ services:
     volumes:
       - ./src:/var/www/html
       - ./docker/php.ini:/usr/local/etc/php/php.ini
+    depends_on:
+      - mysql
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=file_manipulator
+      - DB_USERNAME=root
+      - DB_PASSWORD=password
+      - TZ=Asia/Tokyo
+
+  mysql:
+    image: mysql:8.0
+    container_name: file_manipulator_mysql
+    restart: unless-stopped
+    ports:
+      - "33063:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: file_manipulator
+      MYSQL_USER: laravel
+      MYSQL_PASSWORD: password
+      TZ: Asia/Tokyo
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+    command: --default-authentication-plugin=mysql_native_password --default-time-zone='+09:00'
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: file_manipulator_phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: password
+    depends_on:
+      - mysql
+
+volumes:
+  mysql_data:

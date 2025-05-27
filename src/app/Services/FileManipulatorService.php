@@ -5,6 +5,8 @@ namespace App\Services;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use App\Models\OperationLog;
+use App\Models\FileOperation;
 
 class FileManipulatorService
 {
@@ -15,8 +17,21 @@ class FileManipulatorService
         $originalFilename = $file->getClientOriginalName();
         $fileSize = $file->getSize();
 
+        // 操作ログをDBに作成（初期状態）
+        $operationLog = OperationLog::create([
+            'operation_type' => $this->normalizeCommand($command),
+            'input_filename' => $originalFilename,
+            'operation_details' => [
+                'params' => $params,
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent()
+            ],
+            'status' => 'success'
+        ]);
+
         // 処理開始ログ
         Log::channel($logChannel)->info("ファイル処理開始", [
+            'operation_log_id' => $operationLog->id,
             'command' => $command,
             'original_filename' => $originalFilename,
             'file_size' => $fileSize,
@@ -40,6 +55,7 @@ class FileManipulatorService
                     $count = (int)($params['duplicate_count'] ?? 1);
                     $result = str_repeat($content, $count);
                     Log::channel($logChannel)->info("重複処理実行", [
+                        'operation_log_id' => $operationLog->id,
                         'duplicate_count' => $count,
                         'original_size' => strlen($content),
                         'result_size' => strlen($result)
@@ -51,13 +67,17 @@ class FileManipulatorService
                     $result = str_replace($search, $replace, $content);
                     $replaceCount = substr_count($content, $search);
                     Log::channel($logChannel)->info("文字列置換実行", [
+                        'operation_log_id' => $operationLog->id,
                         'search_string' => $search,
                         'replace_string' => $replace,
                         'replace_count' => $replaceCount
                     ]);
                     break;
                 default:
-                    Log::channel($logChannel)->error("未対応のコマンド", ['command' => $command]);
+                    Log::channel($logChannel)->error("未対応のコマンド", [
+                        'operation_log_id' => $operationLog->id,
+                        'command' => $command
+                    ]);
                     throw new \Exception('未対応のコマンドです。');
             }
 
@@ -74,15 +94,39 @@ class FileManipulatorService
             Storage::disk('public')->put($relativePath, $result);
             $fullPath = Storage::disk('public')->path($relativePath);
 
+            $executionTime = microtime(true) - $startTime;
+
+            // 操作ログを更新
+            $operationLog->update([
+                'output_filename' => $filename,
+                'execution_time' => $executionTime,
+                'file_path' => $relativePath,
+                'file_size' => strlen($result)
+            ]);
+
+            // ファイル操作履歴をDBに保存
+            FileOperation::create([
+                'operation_log_id' => $operationLog->id,
+                'original_filename' => $originalFilename,
+                'stored_filename' => $filename,
+                'file_path' => $relativePath,
+                'operation_directory' => $directoryName,
+                'file_size' => strlen($result),
+                'mime_type' => $file->getMimeType(),
+                'file_content_preview' => $this->getContentPreview($result),
+                'is_downloaded' => false
+            ]);
+
             // 処理成功ログ
             Log::channel($logChannel)->info("ファイル処理成功", [
+                'operation_log_id' => $operationLog->id,
                 'command' => $command,
                 'original_filename' => $originalFilename,
                 'result_filename' => $filename,
                 'saved_path' => $relativePath,
                 'original_size' => strlen($content),
                 'result_size' => strlen($result),
-                'processing_time' => microtime(true) - $startTime
+                'processing_time' => $executionTime
             ]);
 
             return [
@@ -90,11 +134,20 @@ class FileManipulatorService
                 'file_path' => $fullPath,
                 'relative_path' => $relativePath,
                 'filename' => $filename,
-                'download_url' => asset('storage/' . $relativePath)
+                'download_url' => asset('storage/' . $relativePath),
+                'operation_log_id' => $operationLog->id
             ];
         } catch (\Exception $e) {
+            // エラー時の操作ログ更新
+            $operationLog->update([
+                'status' => 'error',
+                'error_message' => $e->getMessage(),
+                'execution_time' => microtime(true) - $startTime
+            ]);
+
             // エラーログ
             Log::channel($logChannel)->error("ファイル処理エラー", [
+                'operation_log_id' => $operationLog->id,
                 'command' => $command,
                 'original_filename' => $originalFilename,
                 'error_message' => $e->getMessage(),
@@ -103,6 +156,29 @@ class FileManipulatorService
 
             throw $e;
         }
+    }
+
+    /**
+     * コマンドを正規化
+     */
+    private function normalizeCommand(string $command): string
+    {
+        $commandMap = [
+            'reverse' => 'reverse',
+            'copy' => 'copy',
+            'duplicate-contents' => 'duplicate',
+            'replace-string' => 'replace'
+        ];
+
+        return $commandMap[$command] ?? $command;
+    }
+
+    /**
+     * ファイル内容のプレビューを取得（最初の200文字）
+     */
+    private function getContentPreview(string $content): string
+    {
+        return mb_substr($content, 0, 200);
     }
 
     /**
