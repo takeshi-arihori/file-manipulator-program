@@ -23,6 +23,7 @@
                         <option value="copy" {{ $operation === 'copy' ? 'selected' : '' }}>📋 コピー</option>
                         <option value="duplicate" {{ $operation === 'duplicate' ? 'selected' : '' }}>📑 重複</option>
                         <option value="replace" {{ $operation === 'replace' ? 'selected' : '' }}>🔄 置換</option>
+                        <option value="markdown" {{ $operation === 'markdown' ? 'selected' : '' }}>📝 Markdown</option>
                     </select>
                 </div>
 
@@ -101,6 +102,10 @@
 
                                             @case('replace')
                                                 🔄 置換操作ログ
+                                            @break
+
+                                            @case('markdown')
+                                                📝 Markdown変換ログ
                                             @break
                                         @endswitch
                                     </span>

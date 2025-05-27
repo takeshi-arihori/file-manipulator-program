@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use App\Models\OperationLog;
 use App\Models\FileOperation;
+use League\CommonMark\Environment\Environment;
+use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
+use League\CommonMark\Extension\GithubFlavoredMarkdownExtension;
+use League\CommonMark\MarkdownConverter;
 
 class FileManipulatorService
 {
@@ -73,6 +77,35 @@ class FileManipulatorService
                         'replace_count' => $replaceCount
                     ]);
                     break;
+                case 'markdown-to-html':
+                    // マークダウンファイルの拡張子チェック
+                    $fileExtension = strtolower(pathinfo($originalFilename, PATHINFO_EXTENSION));
+                    if (!in_array($fileExtension, ['md', 'markdown'])) {
+                        throw new \Exception('マークダウンファイル（.md または .markdown）をアップロードしてください。');
+                    }
+
+                    // GitHub Flavored Markdownの環境を作成（表、取り消し線、自動リンクなどをサポート）
+                    $environment = new Environment([
+                        'html_input' => 'strip',
+                        'allow_unsafe_links' => false,
+                    ]);
+
+                    // 拡張機能を追加
+                    $environment->addExtension(new CommonMarkCoreExtension());
+                    $environment->addExtension(new GithubFlavoredMarkdownExtension());
+
+                    $converter = new MarkdownConverter($environment);
+
+                    $htmlContent = $converter->convert($content)->getContent();
+                    $result = $this->wrapHtmlTemplate($htmlContent, $originalFilename);
+
+                    Log::channel($logChannel)->info("マークダウン変換実行", [
+                        'operation_log_id' => $operationLog->id,
+                        'original_size' => strlen($content),
+                        'html_size' => strlen($result),
+                        'file_extension' => $fileExtension
+                    ]);
+                    break;
                 default:
                     Log::channel($logChannel)->error("未対応のコマンド", [
                         'operation_log_id' => $operationLog->id,
@@ -84,7 +117,14 @@ class FileManipulatorService
             // 操作別ディレクトリに保存
             $directoryName = $this->getDirectoryName($command);
             $timestamp = now()->format('Y-m-d_H-i-s');
-            $filename = "{$timestamp}_{$originalFilename}";
+
+            // マークダウン変換の場合はファイル名を.htmlに変更
+            if ($command === 'markdown-to-html') {
+                $filename = "{$timestamp}_" . pathinfo($originalFilename, PATHINFO_FILENAME) . ".html";
+            } else {
+                $filename = "{$timestamp}_{$originalFilename}";
+            }
+
             $relativePath = "{$directoryName}/{$filename}";
 
             // ディレクトリが存在しない場合は作成
@@ -112,7 +152,7 @@ class FileManipulatorService
                 'file_path' => $relativePath,
                 'operation_directory' => $directoryName,
                 'file_size' => strlen($result),
-                'mime_type' => $file->getMimeType(),
+                'mime_type' => $command === 'markdown-to-html' ? 'text/html' : $file->getMimeType(),
                 'file_content_preview' => $this->getContentPreview($result),
                 'is_downloaded' => false
             ]);
@@ -159,6 +199,108 @@ class FileManipulatorService
     }
 
     /**
+     * HTMLテンプレートでマークダウン変換結果をラップ
+     */
+    private function wrapHtmlTemplate(string $htmlContent, string $originalFilename): string
+    {
+        $title = pathinfo($originalFilename, PATHINFO_FILENAME);
+
+        return <<<HTML
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{$title}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            color: #2c3e50;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+        }
+        h1 { border-bottom: 2px solid #3498db; padding-bottom: 0.3em; }
+        h2 { border-bottom: 1px solid #bdc3c7; padding-bottom: 0.2em; }
+        code {
+            background-color: #f8f9fa;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            padding: 15px;
+            overflow-x: auto;
+        }
+        pre code {
+            background-color: transparent;
+            padding: 0;
+        }
+        blockquote {
+            border-left: 4px solid #3498db;
+            margin: 0;
+            padding-left: 20px;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1em 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+        .generated-info {
+            border-top: 1px solid #e9ecef;
+            margin-top: 2em;
+            padding-top: 1em;
+            font-size: 0.9em;
+            color: #6c757d;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    {$htmlContent}
+    
+    <div class="generated-info">
+        <p>Generated from: {$originalFilename} | Date: {date('Y-m-d H:i:s')}</p>
+    </div>
+</body>
+</html>
+HTML;
+    }
+
+    /**
      * コマンドを正規化
      */
     private function normalizeCommand(string $command): string
@@ -167,7 +309,8 @@ class FileManipulatorService
             'reverse' => 'reverse',
             'copy' => 'copy',
             'duplicate-contents' => 'duplicate',
-            'replace-string' => 'replace'
+            'replace-string' => 'replace',
+            'markdown-to-html' => 'markdown'
         ];
 
         return $commandMap[$command] ?? $command;
@@ -190,7 +333,8 @@ class FileManipulatorService
             'reverse' => 'file_reverse',
             'copy' => 'file_copy',
             'duplicate-contents' => 'file_duplicate',
-            'replace-string' => 'file_replace'
+            'replace-string' => 'file_replace',
+            'markdown-to-html' => 'file_markdown'
         ];
 
         return $channelMap[$command] ?? 'single';
@@ -205,7 +349,8 @@ class FileManipulatorService
             'reverse' => 'file-reverse',
             'copy' => 'file-copy',
             'duplicate-contents' => 'file-duplicate',
-            'replace-string' => 'file-replace'
+            'replace-string' => 'file-replace',
+            'markdown-to-html' => 'file-markdown'
         ];
 
         return $directoryMap[$command] ?? 'file-other';

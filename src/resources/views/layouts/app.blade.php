@@ -18,20 +18,20 @@
     <nav class="bg-gray-800 shadow-sm border-b border-gray-700">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
-                <div class="flex">
+                <div class="flex items-center h-full">
                     <div class="flex-shrink-0 flex items-center">
                         <a href="{{ route('file-manipulator.index') }}"
                             class="text-xl font-bold text-white hover:text-gray-300 transition-colors duration-200">
                             File Manipulator
                         </a>
                     </div>
-                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8 h-full">
                         <a href="{{ route('file-manipulator.index') }}"
-                            class="border-transparent text-gray-300 hover:text-white hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 {{ request()->routeIs('file-manipulator.index') ? 'border-blue-500 text-white' : '' }}">
+                            class="border-transparent text-gray-300 hover:text-white hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 h-full flex items-center {{ request()->routeIs('file-manipulator.index') ? 'border-blue-500 text-white' : '' }}">
                             📁 ファイル操作
                         </a>
                         <a href="{{ route('logs.index') }}"
-                            class="border-transparent text-gray-300 hover:text-white hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 {{ request()->routeIs('logs.index') ? 'border-blue-500 text-white' : '' }}">
+                            class="border-transparent text-gray-300 hover:text-white hover:border-gray-300 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 h-full flex items-center {{ request()->routeIs('logs.index') ? 'border-blue-500 text-white' : '' }}">
                             📊 ログ
                         </a>
                     </div>
