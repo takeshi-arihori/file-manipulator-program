@@ -26,11 +26,15 @@ class FileManipulatorController extends Controller
             'input_file' => 'required|file',
             'command' => 'required|string',
         ]);
+
         $file = $request->file('input_file');
         $params = $request->all();
+
         try {
-            $download = $this->service->processFile($params['command'], $file, $params);
-            return $download;
+            $result = $this->service->processFile($params['command'], $file, $params);
+
+            // ファイルを自動ダウンロード
+            return response()->download($result['file_path'], $result['filename']);
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
